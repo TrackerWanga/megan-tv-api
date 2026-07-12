@@ -1,0 +1,11 @@
+name = "megan-tv-api"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+[[r2_buckets]]
+binding = "TV_STREAMS"
+bucket_name = "megan-tv-streams"
+
+[[kv_namespaces]]
+binding = "TV_CACHE"
+id = "fb8bc0e1fbd94d239e0919d7b42f1cf9"

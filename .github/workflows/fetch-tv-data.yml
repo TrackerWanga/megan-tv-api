@@ -1,0 +1,97 @@
+name: Fetch TV Stream Data
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Fetch and Parse IPTV Data
+        run: |
+          mkdir -p data/index data/countries data/categories
+          
+          # Download IPTV-org master playlist
+          curl -sL "https://iptv-org.github.io/iptv/index.m3u" -o data/master.m3u
+          echo "Downloaded $(wc -c < data/master.m3u) bytes"
+          
+          python3 << 'PYEOF'
+          import json, re, os
+          
+          with open('data/master.m3u', 'r', encoding='utf-8') as f:
+              content = f.read()
+          
+          channels = []
+          pattern = r'#EXTINF:-1 tvg-id="([^"]+)" tvg-logo="([^"]*)" group-title="([^"]*)",(.*?)\n(https?://[^\n]+)'
+          for m in re.finditer(pattern, content):
+              tvg_id = m.group(1)
+              country = tvg_id.split('.')[1] if '.' in tvg_id else tvg_id[:2].upper()
+              channels.append({
+                  "id": tvg_id,
+                  "name": m.group(4).strip(),
+                  "logo": m.group(2),
+                  "category": m.group(3),
+                  "url": m.group(5).strip(),
+                  "country": country[:3].upper()
+              })
+          
+          print(f"Parsed {len(channels)} channels")
+          
+          # All channels
+          with open('data/index/all.json', 'w') as f:
+              json.dump({"channels": channels, "total": len(channels)}, f)
+          
+          # By country
+          countries = {}
+          for c in channels:
+              cc = c['country']
+              if cc not in countries: countries[cc] = []
+              countries[cc].append(c)
+          for cc, chs in countries.items():
+              with open(f'data/countries/{cc}.json', 'w') as f:
+                  json.dump({"country": cc, "channels": chs, "count": len(chs)}, f)
+          
+          # By category
+          categories = {}
+          for c in channels:
+              cat = c['category'].lower().replace(' ', '-').replace('/', '-')[:50]
+              if cat not in categories: categories[cat] = []
+              categories[cat].append(c)
+          for cat, chs in categories.items():
+              with open(f'data/categories/{cat}.json', 'w') as f:
+                  json.dump({"category": cat, "channels": chs, "count": len(chs)}, f)
+          
+          # Indexes
+          with open('data/index/countries.json', 'w') as f:
+              json.dump([{"code": cc, "count": len(chs)} for cc, chs in sorted(countries.items())], f)
+          with open('data/index/categories.json', 'w') as f:
+              json.dump([{"name": cat, "count": len(chs)} for cat, chs in sorted(categories.items())], f)
+          
+          # Stats
+          from datetime import datetime
+          with open('data/stats.json', 'w') as f:
+              json.dump({"totalChannels": len(channels), "totalCountries": len(countries), "lastUpdated": datetime.utcnow().isoformat()}, f)
+          
+          print(f"Countries: {len(countries)}, Categories: {len(categories)}")
+          PYEOF
+      
+      - name: Upload to R2
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          command: |
+            for f in data/index/all.json data/index/countries.json data/index/categories.json data/stats.json; do
+              npx wrangler r2 object put megan-tv-streams/${f#data/} --file=$f
+            done
+            for f in data/countries/*.json; do
+              npx wrangler r2 object put megan-tv-streams/${f#data/} --file=$f
+            done
+            for f in data/categories/*.json; do
+              npx wrangler r2 object put megan-tv-streams/${f#data/} --file=$f
+            done
+            # Update KV stats
+            npx wrangler kv key put --binding=TV_CACHE stats --path=data/stats.json
