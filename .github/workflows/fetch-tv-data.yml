@@ -41,6 +41,7 @@ jobs:
           print(f"Parsed {len(channels)} channels")
           
           # All channels
+          os.makedirs('data/index', exist_ok=True)
           with open('data/index/all.json', 'w') as f:
               json.dump({"channels": channels, "total": len(channels)}, f)
           
@@ -50,6 +51,7 @@ jobs:
               cc = c['country']
               if cc not in countries: countries[cc] = []
               countries[cc].append(c)
+          os.makedirs('data/countries', exist_ok=True)
           for cc, chs in countries.items():
               with open(f'data/countries/{cc}.json', 'w') as f:
                   json.dump({"country": cc, "channels": chs, "count": len(chs)}, f)
@@ -60,6 +62,7 @@ jobs:
               cat = c['category'].lower().replace(' ', '-').replace('/', '-')[:50]
               if cat not in categories: categories[cat] = []
               categories[cat].append(c)
+          os.makedirs('data/categories', exist_ok=True)
           for cat, chs in categories.items():
               with open(f'data/categories/{cat}.json', 'w') as f:
                   json.dump({"category": cat, "channels": chs, "count": len(chs)}, f)
@@ -77,21 +80,48 @@ jobs:
           
           print(f"Countries: {len(countries)}, Categories: {len(categories)}")
           PYEOF
+          
+          echo "Files created:"
+          ls -la data/index/ data/countries/ data/categories/ 2>/dev/null | head -20
+      
+      - name: Install Wrangler
+        run: npm install -g wrangler
       
       - name: Upload to R2
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: |
-            for f in data/index/all.json data/index/countries.json data/index/categories.json data/stats.json; do
-              npx wrangler r2 object put megan-tv-streams/${f#data/} --file=$f
-            done
-            for f in data/countries/*.json; do
-              npx wrangler r2 object put megan-tv-streams/${f#data/} --file=$f
-            done
-            for f in data/categories/*.json; do
-              npx wrangler r2 object put megan-tv-streams/${f#data/} --file=$f
-            done
-            # Update KV stats
-            npx wrangler kv key put --binding=TV_CACHE stats --path=data/stats.json
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          # Authenticate via environment variables
+          export CLOUDFLARE_API_TOKEN=$CF_API_TOKEN
+          export CLOUDFLARE_ACCOUNT_ID=$CF_ACCOUNT_ID
+          
+          # Upload index files
+          for f in data/index/all.json data/index/countries.json data/index/categories.json data/stats.json; do
+            echo "Uploading $f..."
+            npx wrangler r2 object put megan-tv-streams/${f#data/} --file=$f
+          done
+          
+          # Upload country files
+          for f in data/countries/*.json; do
+            echo "Uploading $f..."
+            npx wrangler r2 object put megan-tv-streams/${f#data/} --file=$f
+          done
+          
+          # Upload category files  
+          for f in data/categories/*.json; do
+            echo "Uploading $f..."
+            npx wrangler r2 object put megan-tv-streams/${f#data/} --file=$f
+          done
+          
+          echo "✅ Upload complete!"
+      
+      - name: Update KV Stats
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          export CLOUDFLARE_API_TOKEN=$CF_API_TOKEN
+          export CLOUDFLARE_ACCOUNT_ID=$CF_ACCOUNT_ID
+          npx wrangler kv key put --binding=TV_CACHE stats --path=data/stats.json
+          echo "✅ KV updated!"
