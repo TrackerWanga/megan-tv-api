@@ -72,7 +72,7 @@ jobs:
               {"id": "pluto-classic-tv", "name": "Pluto TV Classic TV", "category": "Entertainment;Classic", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-classic-tv/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-11/pluto11/master.m3u8"},
               {"id": "pluto-anime", "name": "Pluto TV Anime", "category": "Animation;Anime", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-anime/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-12/pluto12/master.m3u8"},
               {"id": "pluto-nature", "name": "Pluto TV Nature", "category": "Documentary", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-nature/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-13/pluto13/master.m3u8"},
-              {"id": "pluto-sci-fi", "name": "Pluto TV Sci-Fi", "category": "Movies;Science Fiction", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-sci-fi/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-14/pluto14/master.m3u8"},
+              {"id": "pluto-sci-fi", "name": "Pluto TV Sci-Fi", "category": "Movies;Sci-Fi", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-sci-fi/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-14/pluto14/master.m3u8"},
               {"id": "pluto-travel", "name": "Pluto TV Travel", "category": "Travel", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-travel/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-15/pluto15/master.m3u8"},
               {"id": "pluto-cars", "name": "Pluto TV Cars", "category": "Entertainment;Automotive", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-cars/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-16/pluto16/master.m3u8"},
               {"id": "pluto-food", "name": "Pluto TV Food", "category": "Entertainment;Cooking", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-food/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-17/pluto17/master.m3u8"},
@@ -97,7 +97,7 @@ jobs:
               {"id": "samsung-sports", "name": "Samsung TV Plus - Sports", "category": "Sports", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/sports.m3u8"},
               {"id": "samsung-music", "name": "Samsung TV Plus - Music", "category": "Music", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/music.m3u8"},
               {"id": "samsung-lifestyle", "name": "Samsung TV Plus - Lifestyle", "category": "Entertainment", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/lifestyle.m3u8"},
-              {"id": "samsung-sci-fi", "name": "Samsung TV Plus - Sci-Fi", "category": "Movies;Science Fiction", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/scifi.m3u8"},
+              {"id": "samsung-sci-fi", "name": "Samsung TV Plus - Sci-Fi", "category": "Movies;Sci-Fi", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/scifi.m3u8"},
               {"id": "samsung-comedy", "name": "Samsung TV Plus - Comedy", "category": "Comedy", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/comedy.m3u8"},
               {"id": "samsung-crime", "name": "Samsung TV Plus - Crime", "category": "Entertainment;Crime", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/crime.m3u8"},
           ]
@@ -114,7 +114,7 @@ jobs:
               {"id": "tubi-comedy", "name": "Tubi Comedy", "category": "Comedy", "country": "US", "logo": "", "url": "https://tubitv.com/live/comedy"},
               {"id": "tubi-horror", "name": "Tubi Horror", "category": "Movies;Horror", "country": "US", "logo": "", "url": "https://tubitv.com/live/horror"},
               {"id": "tubi-kids", "name": "Tubi Kids", "category": "Kids", "country": "US", "logo": "", "url": "https://tubitv.com/live/kids"},
-              {"id": "tubi-sci-fi", "name": "Tubi Sci-Fi", "category": "Movies;Science Fiction", "country": "US", "logo": "", "url": "https://tubitv.com/live/sci-fi"},
+              {"id": "tubi-sci-fi", "name": "Tubi Sci-Fi", "category": "Movies;Sci-Fi", "country": "US", "logo": "", "url": "https://tubitv.com/live/sci-fi"},
               {"id": "tubi-entertainment", "name": "Tubi Entertainment", "category": "Entertainment", "country": "US", "logo": "", "url": "https://tubitv.com/live/entertainment"},
               {"id": "tubi-documentary", "name": "Tubi Documentaries", "category": "Documentary", "country": "US", "logo": "", "url": "https://tubitv.com/live/documentary"},
           ]
