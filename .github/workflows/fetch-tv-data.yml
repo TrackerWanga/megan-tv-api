@@ -10,37 +10,120 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Fetch and Parse IPTV Data
+      - name: Fetch and Parse All TV Data
         run: |
           mkdir -p data/index data/countries data/categories
           
-          curl -sL "https://iptv-org.github.io/iptv/index.m3u" -o data/master.m3u
-          echo "Downloaded $(wc -c < data/master.m3u) bytes"
+          # ─── 1. IPTV-ORG (13K+ channels) ───
+          echo "=== Fetching IPTV-org ==="
+          curl -sL "https://iptv-org.github.io/iptv/index.m3u" -o data/iptv-org.m3u
+          echo "Downloaded $(wc -c < data/iptv-org.m3u) bytes"
           
           python3 << 'PYEOF'
           import json, re, os
           
-          with open('data/master.m3u', 'r', encoding='utf-8') as f:
+          channels = []
+          
+          # Parse IPTV-org
+          with open('data/iptv-org.m3u', 'r', encoding='utf-8') as f:
               content = f.read()
           
-          channels = []
           pattern = r'#EXTINF:-1 tvg-id="([^"]+)" tvg-logo="([^"]*)" group-title="([^"]*)",(.*?)\n(https?://[^\n]+)'
           for m in re.finditer(pattern, content):
               tvg_id = m.group(1)
+              # Extract clean country code from tvg-id (format: Name.COUNTRY@HD)
               parts = tvg_id.split('.')
-              country = parts[1] if len(parts) > 1 else tvg_id[:2].upper()
-              country = country.replace('@HD','').replace('@SD','').replace('@Plus1','').replace('@','')[:3].upper()
+              if len(parts) > 1:
+                  country_part = parts[1]
+                  # Remove @HD, @SD, @Plus1, @India etc
+                  country = re.sub(r'@.*', '', country_part).upper()[:3]
+              else:
+                  country = tvg_id[:2].upper()
+              
+              # Skip empty country codes
+              if not country or len(country) < 2:
+                  continue
+              
               channels.append({
                   "id": tvg_id,
                   "name": m.group(4).strip(),
                   "logo": m.group(2),
                   "category": m.group(3),
                   "url": m.group(5).strip(),
-                  "country": country
+                  "country": country,
+                  "source": "iptv-org"
               })
           
-          print(f"Parsed {len(channels)} channels")
+          print(f"IPTV-org: {len(channels)} channels")
           
+          # ─── 2. PLUTO TV (200+ free channels) ───
+          print("=== Adding Pluto TV ===")
+          pluto_channels = [
+              {"id": "pluto-movies", "name": "Pluto TV Movies", "category": "Movies", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-movies/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-01/pluto01/master.m3u8"},
+              {"id": "pluto-action", "name": "Pluto TV Action", "category": "Movies;Action", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-action/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-02/pluto02/master.m3u8"},
+              {"id": "pluto-comedy", "name": "Pluto TV Comedy", "category": "Comedy", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-comedy/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-03/pluto03/master.m3u8"},
+              {"id": "pluto-drama", "name": "Pluto TV Drama", "category": "Entertainment;Drama", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-drama/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-04/pluto04/master.m3u8"},
+              {"id": "pluto-horror", "name": "Pluto TV Horror", "category": "Movies;Horror", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-horror/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-05/pluto05/master.m3u8"},
+              {"id": "pluto-kids", "name": "Pluto TV Kids", "category": "Kids", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-kids/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-06/pluto06/master.m3u8"},
+              {"id": "pluto-sports", "name": "Pluto TV Sports", "category": "Sports", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-sports/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-07/pluto07/master.m3u8"},
+              {"id": "pluto-news", "name": "Pluto TV News", "category": "News", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-news/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-08/pluto08/master.m3u8"},
+              {"id": "pluto-music", "name": "Pluto TV Music", "category": "Music", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-music/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-09/pluto09/master.m3u8"},
+              {"id": "pluto-reality", "name": "Pluto TV Reality", "category": "Entertainment", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-reality/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-10/pluto10/master.m3u8"},
+              {"id": "pluto-classic-tv", "name": "Pluto TV Classic TV", "category": "Entertainment;Classic", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-classic-tv/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-11/pluto11/master.m3u8"},
+              {"id": "pluto-anime", "name": "Pluto TV Anime", "category": "Animation;Anime", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-anime/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-12/pluto12/master.m3u8"},
+              {"id": "pluto-nature", "name": "Pluto TV Nature", "category": "Documentary", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-nature/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-13/pluto13/master.m3u8"},
+              {"id": "pluto-sci-fi", "name": "Pluto TV Sci-Fi", "category": "Movies;Science Fiction", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-sci-fi/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-14/pluto14/master.m3u8"},
+              {"id": "pluto-travel", "name": "Pluto TV Travel", "category": "Travel", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-travel/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-15/pluto15/master.m3u8"},
+              {"id": "pluto-cars", "name": "Pluto TV Cars", "category": "Entertainment;Automotive", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-cars/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-16/pluto16/master.m3u8"},
+              {"id": "pluto-food", "name": "Pluto TV Food", "category": "Entertainment;Cooking", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-food/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-17/pluto17/master.m3u8"},
+              {"id": "pluto-game-shows", "name": "Pluto TV Game Shows", "category": "Entertainment;Game-Show", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-game-shows/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-18/pluto18/master.m3u8"},
+              {"id": "pluto-crime", "name": "Pluto TV Crime", "category": "Entertainment;Crime", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-crime/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-19/pluto19/master.m3u8"},
+              {"id": "pluto-vevo-pop", "name": "Vevo Pop", "category": "Music", "country": "US", "logo": "https://images.pluto.tv/channels/vevo-pop/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/vevo/vevo-pop/master.m3u8"},
+              {"id": "pluto-vevo-country", "name": "Vevo Country", "category": "Music", "country": "US", "logo": "https://images.pluto.tv/channels/vevo-country/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/vevo/vevo-country/master.m3u8"},
+              {"id": "pluto-vevo-hiphop", "name": "Vevo Hip-Hop", "category": "Music", "country": "US", "logo": "https://images.pluto.tv/channels/vevo-hiphop/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/vevo/vevo-hiphop/master.m3u8"},
+          ]
+          for c in pluto_channels:
+              c["source"] = "pluto"
+              channels.append(c)
+          print(f"Pluto TV: {len(pluto_channels)} channels")
+
+          # ─── 3. SAMSUNG TV PLUS ───
+          print("=== Adding Samsung TV Plus ===")
+          samsung_channels = [
+              {"id": "samsung-news", "name": "Samsung TV Plus - News", "category": "News", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/news.m3u8"},
+              {"id": "samsung-movies", "name": "Samsung TV Plus - Movies", "category": "Movies", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/movies.m3u8"},
+              {"id": "samsung-entertainment", "name": "Samsung TV Plus - Entertainment", "category": "Entertainment", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/entertainment.m3u8"},
+              {"id": "samsung-kids", "name": "Samsung TV Plus - Kids", "category": "Kids", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/kids.m3u8"},
+              {"id": "samsung-sports", "name": "Samsung TV Plus - Sports", "category": "Sports", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/sports.m3u8"},
+              {"id": "samsung-music", "name": "Samsung TV Plus - Music", "category": "Music", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/music.m3u8"},
+              {"id": "samsung-lifestyle", "name": "Samsung TV Plus - Lifestyle", "category": "Entertainment", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/lifestyle.m3u8"},
+              {"id": "samsung-sci-fi", "name": "Samsung TV Plus - Sci-Fi", "category": "Movies;Science Fiction", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/scifi.m3u8"},
+              {"id": "samsung-comedy", "name": "Samsung TV Plus - Comedy", "category": "Comedy", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/comedy.m3u8"},
+              {"id": "samsung-crime", "name": "Samsung TV Plus - Crime", "category": "Entertainment;Crime", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/crime.m3u8"},
+          ]
+          for c in samsung_channels:
+              c["source"] = "samsung"
+              channels.append(c)
+          print(f"Samsung TV Plus: {len(samsung_channels)} channels")
+
+          # ─── 4. TUBI ───
+          print("=== Adding Tubi ===")
+          tubi_channels = [
+              {"id": "tubi-movies", "name": "Tubi Movies", "category": "Movies", "country": "US", "logo": "", "url": "https://tubitv.com/live"},
+              {"id": "tubi-action", "name": "Tubi Action", "category": "Movies;Action", "country": "US", "logo": "", "url": "https://tubitv.com/live/action"},
+              {"id": "tubi-comedy", "name": "Tubi Comedy", "category": "Comedy", "country": "US", "logo": "", "url": "https://tubitv.com/live/comedy"},
+              {"id": "tubi-horror", "name": "Tubi Horror", "category": "Movies;Horror", "country": "US", "logo": "", "url": "https://tubitv.com/live/horror"},
+              {"id": "tubi-kids", "name": "Tubi Kids", "category": "Kids", "country": "US", "logo": "", "url": "https://tubitv.com/live/kids"},
+              {"id": "tubi-sci-fi", "name": "Tubi Sci-Fi", "category": "Movies;Science Fiction", "country": "US", "logo": "", "url": "https://tubitv.com/live/sci-fi"},
+              {"id": "tubi-entertainment", "name": "Tubi Entertainment", "category": "Entertainment", "country": "US", "logo": "", "url": "https://tubitv.com/live/entertainment"},
+              {"id": "tubi-documentary", "name": "Tubi Documentaries", "category": "Documentary", "country": "US", "logo": "", "url": "https://tubitv.com/live/documentary"},
+          ]
+          for c in tubi_channels:
+              c["source"] = "tubi"
+              channels.append(c)
+          print(f"Tubi: {len(tubi_channels)} channels")
+
+          # ─── SAVE ───
           os.makedirs('data/index', exist_ok=True)
           with open('data/index/all.json', 'w') as f:
               json.dump({"channels": channels, "total": len(channels)}, f)
@@ -57,9 +140,10 @@ jobs:
           
           categories = {}
           for c in channels:
-              cat = c['category'].lower().replace(' ', '-').replace('/', '-')[:50]
-              if cat not in categories: categories[cat] = []
-              categories[cat].append(c)
+              for cat in c['category'].split(';'):
+                  cat = cat.strip().lower()
+                  if cat not in categories: categories[cat] = []
+                  categories[cat].append(c)
           os.makedirs('data/categories', exist_ok=True)
           for cat, chs in categories.items():
               with open(f'data/categories/{cat}.json', 'w') as f:
@@ -74,7 +158,7 @@ jobs:
           with open('data/stats.json', 'w') as f:
               json.dump({"totalChannels": len(channels), "totalCountries": len(countries), "lastUpdated": datetime.utcnow().isoformat()}, f)
           
-          print(f"Countries: {len(countries)}, Categories: {len(categories)}")
+          print(f"\n✅ TOTAL: {len(channels)} channels, {len(countries)} countries, {len(categories)} categories")
           PYEOF
       
       - name: Install Wrangler
@@ -85,24 +169,18 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
-          echo "Uploading index files..."
           npx wrangler r2 object put megan-tv-streams/index/all.json --file=data/index/all.json
           npx wrangler r2 object put megan-tv-streams/index/countries.json --file=data/index/countries.json
           npx wrangler r2 object put megan-tv-streams/index/categories.json --file=data/index/categories.json
           npx wrangler r2 object put megan-tv-streams/stats.json --file=data/stats.json
-          
-          echo "Uploading countries..."
           for f in data/countries/*.json; do
             name=$(basename $f)
-            npx wrangler r2 object put megan-tv-streams/countries/$name --file=$f 2>&1 | tail -1
+            npx wrangler r2 object put megan-tv-streams/countries/$name --file=$f
           done
-          
-          echo "Uploading categories..."
           for f in data/categories/*.json; do
             name=$(basename $f)
-            npx wrangler r2 object put megan-tv-streams/categories/$name --file=$f 2>&1 | tail -1
+            npx wrangler r2 object put megan-tv-streams/categories/$name --file=$f
           done
-          
           echo "✅ R2 upload complete!"
 
       - name: Update KV
