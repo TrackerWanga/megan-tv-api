@@ -27,11 +27,9 @@ jobs:
           pattern = r'#EXTINF:-1 tvg-id="([^"]+)" tvg-logo="([^"]*)" group-title="([^"]*)",(.*?)\n(https?://[^\n]+)'
           for m in re.finditer(pattern, content):
               tvg_id = m.group(1)
-              # Clean country code - remove @HD, @SD, @Plus1 suffixes
               parts = tvg_id.split('.')
               country = parts[1] if len(parts) > 1 else tvg_id[:2].upper()
-              country = country.replace('@HD','').replace('@SD','').replace('@Plus1','').replace('@','')
-              country = country[:3].upper()
+              country = country.replace('@HD','').replace('@SD','').replace('@Plus1','').replace('@','')[:3].upper()
               channels.append({
                   "id": tvg_id,
                   "name": m.group(4).strip(),
@@ -47,7 +45,6 @@ jobs:
           with open('data/index/all.json', 'w') as f:
               json.dump({"channels": channels, "total": len(channels)}, f)
           
-          # By country
           countries = {}
           for c in channels:
               cc = c['country']
@@ -58,7 +55,6 @@ jobs:
               with open(f'data/countries/{cc}.json', 'w') as f:
                   json.dump({"country": cc, "channels": chs, "count": len(chs)}, f)
           
-          # By category  
           categories = {}
           for c in channels:
               cat = c['category'].lower().replace(' ', '-').replace('/', '-')[:50]
@@ -69,7 +65,6 @@ jobs:
               with open(f'data/categories/{cat}.json', 'w') as f:
                   json.dump({"category": cat, "channels": chs, "count": len(chs)}, f)
           
-          # Indexes
           with open('data/index/countries.json', 'w') as f:
               json.dump([{"code": cc, "count": len(chs)} for cc, chs in sorted(countries.items())], f)
           with open('data/index/categories.json', 'w') as f:
@@ -82,28 +77,38 @@ jobs:
           print(f"Countries: {len(countries)}, Categories: {len(categories)}")
           PYEOF
       
+      - name: Install Wrangler
+        run: npm install -g wrangler@latest
+      
       - name: Upload to R2
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: |
-            r2 object put megan-tv-streams/index/all.json --file=data/index/all.json
-            r2 object put megan-tv-streams/index/countries.json --file=data/index/countries.json
-            r2 object put megan-tv-streams/index/categories.json --file=data/index/categories.json
-            r2 object put megan-tv-streams/stats.json --file=data/stats.json
-            for f in data/countries/*.json; do
-              name=$(basename $f)
-              r2 object put megan-tv-streams/countries/$name --file=$f
-            done
-            for f in data/categories/*.json; do
-              name=$(basename $f)
-              r2 object put megan-tv-streams/categories/$name --file=$f
-            done
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "Uploading index files..."
+          npx wrangler r2 object put megan-tv-streams/index/all.json --file=data/index/all.json
+          npx wrangler r2 object put megan-tv-streams/index/countries.json --file=data/index/countries.json
+          npx wrangler r2 object put megan-tv-streams/index/categories.json --file=data/index/categories.json
+          npx wrangler r2 object put megan-tv-streams/stats.json --file=data/stats.json
+          
+          echo "Uploading countries..."
+          for f in data/countries/*.json; do
+            name=$(basename $f)
+            npx wrangler r2 object put megan-tv-streams/countries/$name --file=$f 2>&1 | tail -1
+          done
+          
+          echo "Uploading categories..."
+          for f in data/categories/*.json; do
+            name=$(basename $f)
+            npx wrangler r2 object put megan-tv-streams/categories/$name --file=$f 2>&1 | tail -1
+          done
+          
+          echo "✅ R2 upload complete!"
 
       - name: Update KV
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: kv key put --binding TV_CACHE stats --path=data/stats.json
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          npx wrangler kv key put --binding TV_CACHE stats --path=data/stats.json
+          echo "✅ KV updated!"
