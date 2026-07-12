@@ -14,7 +14,6 @@ jobs:
         run: |
           mkdir -p data/index data/countries data/categories
           
-          # Download IPTV-org master playlist
           curl -sL "https://iptv-org.github.io/iptv/index.m3u" -o data/master.m3u
           echo "Downloaded $(wc -c < data/master.m3u) bytes"
           
@@ -28,19 +27,22 @@ jobs:
           pattern = r'#EXTINF:-1 tvg-id="([^"]+)" tvg-logo="([^"]*)" group-title="([^"]*)",(.*?)\n(https?://[^\n]+)'
           for m in re.finditer(pattern, content):
               tvg_id = m.group(1)
-              country = tvg_id.split('.')[1] if '.' in tvg_id else tvg_id[:2].upper()
+              # Clean country code - remove @HD, @SD, @Plus1 suffixes
+              parts = tvg_id.split('.')
+              country = parts[1] if len(parts) > 1 else tvg_id[:2].upper()
+              country = country.replace('@HD','').replace('@SD','').replace('@Plus1','').replace('@','')
+              country = country[:3].upper()
               channels.append({
                   "id": tvg_id,
                   "name": m.group(4).strip(),
                   "logo": m.group(2),
                   "category": m.group(3),
                   "url": m.group(5).strip(),
-                  "country": country[:3].upper()
+                  "country": country
               })
           
           print(f"Parsed {len(channels)} channels")
           
-          # All channels
           os.makedirs('data/index', exist_ok=True)
           with open('data/index/all.json', 'w') as f:
               json.dump({"channels": channels, "total": len(channels)}, f)
@@ -56,7 +58,7 @@ jobs:
               with open(f'data/countries/{cc}.json', 'w') as f:
                   json.dump({"country": cc, "channels": chs, "count": len(chs)}, f)
           
-          # By category
+          # By category  
           categories = {}
           for c in channels:
               cat = c['category'].lower().replace(' ', '-').replace('/', '-')[:50]
@@ -73,55 +75,35 @@ jobs:
           with open('data/index/categories.json', 'w') as f:
               json.dump([{"name": cat, "count": len(chs)} for cat, chs in sorted(categories.items())], f)
           
-          # Stats
           from datetime import datetime
           with open('data/stats.json', 'w') as f:
               json.dump({"totalChannels": len(channels), "totalCountries": len(countries), "lastUpdated": datetime.utcnow().isoformat()}, f)
           
           print(f"Countries: {len(countries)}, Categories: {len(categories)}")
           PYEOF
-          
-          echo "Files created:"
-          ls -la data/index/ data/countries/ data/categories/ 2>/dev/null | head -20
-      
-      - name: Install Wrangler
-        run: npm install -g wrangler
       
       - name: Upload to R2
-        env:
-          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          # Authenticate via environment variables
-          export CLOUDFLARE_API_TOKEN=$CF_API_TOKEN
-          export CLOUDFLARE_ACCOUNT_ID=$CF_ACCOUNT_ID
-          
-          # Upload index files
-          for f in data/index/all.json data/index/countries.json data/index/categories.json data/stats.json; do
-            echo "Uploading $f..."
-            npx wrangler r2 object put megan-tv-streams/${f#data/} --file=$f
-          done
-          
-          # Upload country files
-          for f in data/countries/*.json; do
-            echo "Uploading $f..."
-            npx wrangler r2 object put megan-tv-streams/${f#data/} --file=$f
-          done
-          
-          # Upload category files  
-          for f in data/categories/*.json; do
-            echo "Uploading $f..."
-            npx wrangler r2 object put megan-tv-streams/${f#data/} --file=$f
-          done
-          
-          echo "✅ Upload complete!"
-      
-      - name: Update KV Stats
-        env:
-          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          export CLOUDFLARE_API_TOKEN=$CF_API_TOKEN
-          export CLOUDFLARE_ACCOUNT_ID=$CF_ACCOUNT_ID
-          npx wrangler kv key put --binding=TV_CACHE stats --path=data/stats.json
-          echo "✅ KV updated!"
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          command: |
+            r2 object put megan-tv-streams/index/all.json --file=data/index/all.json
+            r2 object put megan-tv-streams/index/countries.json --file=data/index/countries.json
+            r2 object put megan-tv-streams/index/categories.json --file=data/index/categories.json
+            r2 object put megan-tv-streams/stats.json --file=data/stats.json
+            for f in data/countries/*.json; do
+              name=$(basename $f)
+              r2 object put megan-tv-streams/countries/$name --file=$f
+            done
+            for f in data/categories/*.json; do
+              name=$(basename $f)
+              r2 object put megan-tv-streams/categories/$name --file=$f
+            done
+
+      - name: Update KV
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          command: kv key put --binding TV_CACHE stats --path=data/stats.json
