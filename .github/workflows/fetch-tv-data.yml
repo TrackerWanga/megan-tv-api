@@ -169,17 +169,17 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
-          npx wrangler r2 object put megan-tv-streams/index/all.json --file=data/index/all.json
-          npx wrangler r2 object put megan-tv-streams/index/countries.json --file=data/index/countries.json
-          npx wrangler r2 object put megan-tv-streams/index/categories.json --file=data/index/categories.json
-          npx wrangler r2 object put megan-tv-streams/stats.json --file=data/stats.json
+          npx wrangler r2 object put --remote megan-tv-streams/index/all.json --file=data/index/all.json
+          npx wrangler r2 object put --remote megan-tv-streams/index/countries.json --file=data/index/countries.json
+          npx wrangler r2 object put --remote megan-tv-streams/index/categories.json --file=data/index/categories.json
+          npx wrangler r2 object put --remote megan-tv-streams/stats.json --file=data/stats.json
           for f in data/countries/*.json; do
             name=$(basename $f)
-            npx wrangler r2 object put megan-tv-streams/countries/$name --file=$f
+            npx wrangler r2 object put --remote megan-tv-streams/countries/$name --file=$f
           done
           for f in data/categories/*.json; do
             name=$(basename $f)
-            npx wrangler r2 object put megan-tv-streams/categories/$name --file=$f
+            npx wrangler r2 object put --remote megan-tv-streams/categories/$name --file=$f
           done
           echo "✅ R2 upload complete!"
 

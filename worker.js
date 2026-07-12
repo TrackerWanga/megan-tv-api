@@ -101,15 +101,20 @@ function json(data, cors, status = 200) {
 }
 
 async function loadJSON(env, key) {
-  const cached = await env.TV_CACHE.get(key, 'json');
-  if (cached) return cached;
+  // Try R2 first (always fresh), then fall back to KV
   try {
     const obj = await env.TV_STREAMS.get(key);
-    if (!obj) return null;
-    const data = await obj.json();
-    await env.TV_CACHE.put(key, JSON.stringify(data), { expirationTtl: 3600 });
-    return data;
-  } catch (e) { return null; }
+    if (obj) {
+      const data = await obj.json();
+      // Cache in KV for faster next read
+      await env.TV_CACHE.put(key, JSON.stringify(data), { expirationTtl: 3600 });
+      return data;
+    }
+  } catch (e) {}
+  
+  // Fall back to KV if R2 fails
+  const cached = await env.TV_CACHE.get(key, 'json');
+  return cached || null;
 }
 
 async function proxyStream(streamUrl, origin, id) {
