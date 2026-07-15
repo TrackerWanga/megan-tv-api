@@ -27,13 +27,13 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
           for f in data/index/*.json data/stats.json; do
-            npx wrangler r2 object put "megan-tv-streams/${f#data/}" --file="$f"
+            npx wrangler r2 object put --remote "megan-tv-streams/${f#data/}" --file="$f"
           done
           for f in data/countries/*.json; do
-            npx wrangler r2 object put "megan-tv-streams/${f#data/}" --file="$f"
+            npx wrangler r2 object put --remote "megan-tv-streams/${f#data/}" --file="$f"
           done
           for f in data/categories/*.json; do
-            npx wrangler r2 object put "megan-tv-streams/${f#data/}" --file="$f"
+            npx wrangler r2 object put --remote "megan-tv-streams/${f#data/}" --file="$f"
           done
           echo "✅ R2 upload complete!"
 
