@@ -35,6 +35,12 @@ jobs:
           for f in data/categories/*.json; do
             npx wrangler r2 object put --remote "megan-tv-streams/${f#data/}" --file="$f"
           done
+          for f in data/cartoons/*.json; do
+            npx wrangler r2 object put --remote "megan-tv-streams/${f#data/}" --file="$f"
+          done
+          for f in data/pbskids/*.json; do
+            npx wrangler r2 object put --remote "megan-tv-streams/${f#data/}" --file="$f"
+          done
           echo "✅ R2 upload complete!"
 
       - name: Update KV

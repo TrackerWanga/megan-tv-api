@@ -109,3 +109,104 @@ with open('data/stats.json', 'w') as f:
     }, f)
 
 print(f"\nTOTAL: {len(channels)} channels, {len(countries)} countries, {len(categories)} categories")
+
+# ═══════════════════════════════════════════
+# 5. SUPER CARTOONS
+# ═══════════════════════════════════════════
+print("\n5. Adding SuperCartoons...")
+import urllib.request
+from bs4 import BeautifulSoup
+
+cartoons = []
+try:
+    req = urllib.request.Request('https://www.supercartoons.net', headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'})
+    resp = urllib.request.urlopen(req, timeout=15)
+    html = resp.read().decode()
+    soup = BeautifulSoup(html, 'html.parser')
+    
+    for link in soup.find_all('a', href=True):
+        href = link.get('href', '')
+        text = link.get_text(strip=True)
+        if '/cartoon/' in href and len(text) > 3:
+            cartoons.append({
+                "id": f"sc-{href.split('/')[-1][:20]}",
+                "name": text,
+                "url": f"https://www.supercartoons.net{href}" if href.startswith('/') else href,
+                "category": "Cartoons",
+                "source": "supercartoons",
+                "country": "US",
+            })
+    
+    # Deduplicate
+    seen = set()
+    unique_cartoons = []
+    for c in cartoons:
+        if c['name'] not in seen:
+            seen.add(c['name'])
+            unique_cartoons.append(c)
+    
+    # Save cartoons to their own file
+    os.makedirs('data/cartoons', exist_ok=True)
+    with open('data/cartoons/index.json', 'w') as f:
+        json.dump({"channels": unique_cartoons, "total": len(unique_cartoons)}, f)
+    
+    print(f"SuperCartoons: {len(unique_cartoons)} cartoons saved")
+except Exception as e:
+    print(f"SuperCartoons error: {e}")
+    unique_cartoons = []
+
+# ═══════════════════════════════════════════
+# 6. PBS KIDS
+# ═══════════════════════════════════════════
+print("\n6. Scraping PBS Kids...")
+pbs_shows = []
+try:
+    req = urllib.request.Request('https://pbskids.org/videos', headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'})
+    resp = urllib.request.urlopen(req, timeout=15)
+    html = resp.read().decode()
+    soup = BeautifulSoup(html, 'html.parser')
+    
+    # Find Next.js data
+    script_tag = soup.find('script', id='__NEXT_DATA__')
+    if script_tag:
+        data = json.loads(script_tag.text)
+        page_data = data.get('props', {}).get('pageProps', {}).get('pageData', {})
+        
+        # Walk the masthead content for show modules
+        for module in page_data.get('mastheadContent', []):
+            if module.get('__typename') == 'MastheadContentModulesShows':
+                for show in module.get('shows', []):
+                    pbs_shows.append({
+                        "id": f"pbs-{show.get('id', '')}",
+                        "title": show.get('title', ''),
+                        "slug": show.get('slug', ''),
+                        "description": (show.get('description') or '')[:200],
+                        "poster": show.get('image', ''),
+                        "url": f"https://pbskids.org/videos/{show.get('slug', '')}",
+                        "source": "pbskids",
+                        "category": "Kids",
+                    })
+    
+    # Save PBS Kids
+    os.makedirs('data/pbskids', exist_ok=True)
+    with open('data/pbskids/index.json', 'w') as f:
+        json.dump({"shows": pbs_shows, "total": len(pbs_shows)}, f)
+    
+    print(f"PBS Kids: {len(pbs_shows)} shows saved")
+except Exception as e:
+    print(f"PBS Kids error: {e}")
+
+# ═══════════════════════════════════════════
+# FINAL STATS UPDATE
+# ═══════════════════════════════════════════
+from datetime import datetime, timezone
+with open('data/stats.json', 'w') as f:
+    json.dump({
+        "totalChannels": len(channels),
+        "totalCountries": len(countries),
+        "totalCartoons": len(unique_cartoons),
+        "totalPbsShows": len(pbs_shows),
+        "lastUpdated": datetime.now(timezone.utc).isoformat()
+    }, f)
+
+print(f"\n✅ FINAL: {len(channels)} channels, {len(countries)} countries, {len(unique_cartoons)} cartoons, {len(pbs_shows)} PBS shows")
