@@ -157,6 +157,19 @@ except Exception as e:
 
 # ═══════════════════════════════════════════
 # 6. PBS KIDS
+
+def format_pbs_show(show):
+    return {
+        "id": f"pbs-{show.get('id', show.get('slug', ''))}",
+        "title": show.get('title', ''),
+        "slug": show.get('slug', ''),
+        "description": (show.get('description') or '')[:200],
+        "poster": show.get('image', '') or show.get('poster', ''),
+        "url": f"https://pbskids.org/videos/{show.get('slug', '')}",
+        "source": "pbskids",
+        "category": "Kids",
+    }
+
 # ═══════════════════════════════════════════
 print("\n6. Scraping PBS Kids...")
 pbs_shows = []
@@ -169,23 +182,39 @@ try:
     # Find Next.js data
     script_tag = soup.find('script', id='__NEXT_DATA__')
     if script_tag:
-        data = json.loads(script_tag.text)
-        page_data = data.get('props', {}).get('pageProps', {}).get('pageData', {})
-        
-        # Walk the masthead content for show modules
-        for module in page_data.get('mastheadContent', []):
-            if module.get('__typename') == 'MastheadContentModulesShows':
-                for show in module.get('shows', []):
-                    pbs_shows.append({
-                        "id": f"pbs-{show.get('id', '')}",
-                        "title": show.get('title', ''),
-                        "slug": show.get('slug', ''),
-                        "description": (show.get('description') or '')[:200],
-                        "poster": show.get('image', ''),
-                        "url": f"https://pbskids.org/videos/{show.get('slug', '')}",
-                        "source": "pbskids",
-                        "category": "Kids",
-                    })
+        try:
+            data = json.loads(script_tag.text)
+            # Try multiple paths to find shows
+            page_data = data.get('props', {}).get('pageProps', {}).get('pageData', {})
+            
+            # Path 1: mastheadContent modules
+            for module in page_data.get('mastheadContent', []):
+                if 'shows' in module:
+                    for show in module.get('shows', []):
+                        if show.get('title'):
+                            pbs_shows.append(format_pbs_show(show))
+            
+            # Path 2: Direct shows list
+            if not pbs_shows:
+                shows_list = page_data.get('shows', [])
+                for show in shows_list:
+                    if show.get('title'):
+                        pbs_shows.append(format_pbs_show(show))
+            
+            # Path 3: Search through all nested data for show objects
+            if not pbs_shows:
+                def find_shows(obj):
+                    if isinstance(obj, dict):
+                        if 'title' in obj and 'slug' in obj and len(obj.get('title','')) > 3:
+                            pbs_shows.append(format_pbs_show(obj))
+                        for v in obj.values():
+                            find_shows(v)
+                    elif isinstance(obj, list):
+                        for item in obj[:50]:
+                            find_shows(item)
+                find_shows(page_data)
+        except Exception as e:
+            print(f"  PBS parsing error: {e}")
     
     # Save PBS Kids
     os.makedirs('data/pbskids', exist_ok=True)
