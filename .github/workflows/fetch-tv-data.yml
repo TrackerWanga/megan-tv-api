@@ -16,6 +16,7 @@ jobs:
           curl -sL "https://iptv-org.github.io/iptv/index.m3u" -o data/master.m3u
           echo "Downloaded $(wc -c < data/master.m3u) bytes"
           
+          pip install beautifulsoup4 requests
           python3 scripts/parse_iptv.py
       
       - name: Install Wrangler
