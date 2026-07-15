@@ -246,3 +246,124 @@ jobs:
         run: |
           npx wrangler kv key put --binding TV_CACHE stats --path=data/stats.json
           echo "✅ KV updated!"
+
+      - name: Auto-Discover New Streams
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+        run: |
+          echo "=== Auto-Discovering New Streams ==="
+          python3 << 'PYEOF'
+          import json, subprocess, re, os
+          from datetime import datetime
+          
+          new_channels = []
+          
+          # ─── 1. Scrape GoLiveAfrica for new live IDs ───
+          print("1. Scraping GoLiveAfrica...")
+          try:
+              result = subprocess.run(['curl', '-s', 'https://goliveafrica.media/cat/live-tv-channels',
+                                       '-H', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'],
+                                      capture_output=True, text=True, timeout=15)
+              html = result.stdout
+              
+              # Find live stream IDs in the page
+              live_ids = list(set(re.findall(r'live_([a-f0-9]{13,})', html)))
+              print(f"  Found {len(live_ids)} potential live IDs")
+              
+              for lid in live_ids[:20]:
+                  url = f"https://goliveafrica.media:9998/live/{lid}/index.m3u8"
+                  r = subprocess.run(['curl', '-s', '-o', '/dev/null', '-w', '%{http_code}', url,
+                                      '-H', 'User-Agent: Mozilla/5.0', '--max-time', '5'],
+                                     capture_output=True, text=True)
+                  if r.stdout.strip() == '200':
+                      # Check for actual video segments
+                      r2 = subprocess.run(['curl', '-s', url, '-H', 'User-Agent: Mozilla/5.0', '--max-time', '5'],
+                                         capture_output=True, text=True)
+                      if '.ts' in r2.stdout:
+                          new_channels.append({
+                              "id": f"golive-{lid[:8]}",
+                              "name": f"GoLive Africa - {lid[:8]}",
+                              "category": "General",
+                              "country": "KE",
+                              "url": url,
+                              "source": "goliveafrica",
+                              "verified": True,
+                              "discovered": datetime.utcnow().isoformat()
+                          })
+                          print(f"    ✅ NEW LIVE: {lid[:8]}...")
+          except Exception as e:
+              print(f"  Error: {e}")
+          
+          # ─── 2. Scrape PBS Kids ───
+          print("\n2. Checking PBS Kids...")
+          try:
+              r = subprocess.run(['curl', '-s', '-o', '/dev/null', '-w', '%{http_code}',
+                                  'https://pbskids.org/videos', '--max-time', '5'],
+                                 capture_output=True, text=True)
+              if r.stdout.strip() == '200':
+                  new_channels.append({
+                      "id": "pbs-kids",
+                      "name": "PBS Kids",
+                      "category": "Kids",
+                      "country": "US",
+                      "url": "https://pbskids.org/videos",
+                      "source": "pbs",
+                      "verified": True
+                  })
+                  print("  ✅ PBS Kids accessible")
+          except: pass
+          
+          # ─── 3. Plex Live TV ───
+          print("\n3. Checking Plex...")
+          try:
+              r = subprocess.run(['curl', '-s', '-o', '/dev/null', '-w', '%{http_code}',
+                                  'https://watch.plex.tv/live-tv', '--max-time', '5'],
+                                 capture_output=True, text=True)
+              if r.stdout.strip() in ['200', '301', '302']:
+                  new_channels.append({
+                      "id": "plex-live",
+                      "name": "Plex Live TV",
+                      "category": "Entertainment",
+                      "country": "US",
+                      "url": "https://watch.plex.tv/live-tv",
+                      "source": "plex",
+                      "verified": True
+                  })
+                  print("  ✅ Plex accessible")
+          except: pass
+          
+          # ─── 4. SuperCartoons ───
+          print("\n4. Checking SuperCartoons...")
+          try:
+              r = subprocess.run(['curl', '-s', '-o', '/dev/null', '-w', '%{http_code}',
+                                  'https://www.supercartoons.net', '--max-time', '5'],
+                                 capture_output=True, text=True)
+              if r.stdout.strip() == '200':
+                  new_channels.append({
+                      "id": "supercartoons",
+                      "name": "SuperCartoons",
+                      "category": "Animation;Cartoons",
+                      "country": "US",
+                      "url": "https://www.supercartoons.net",
+                      "source": "supercartoons",
+                      "verified": True
+                  })
+                  print("  ✅ SuperCartoons accessible")
+          except: pass
+          
+          # ─── Save discovered channels ───
+          if new_channels:
+              os.makedirs('data', exist_ok=True)
+              with open('data/discovered_channels.json', 'w') as f:
+                  json.dump({"channels": new_channels, "discovered_at": datetime.utcnow().isoformat()}, f, indent=2)
+              print(f"\n✅ Discovered {len(new_channels)} new channels!")
+              
+              # Upload to R2
+              subprocess.run(['npx', 'wrangler', 'r2', 'object', 'put', 
+                             'megan-tv-streams/discovered_channels.json',
+                             '--file=data/discovered_channels.json'],
+                            env={**os.environ, 'CLOUDFLARE_API_TOKEN': os.environ['CF_API_TOKEN'],
+                                 'CLOUDFLARE_ACCOUNT_ID': os.environ['CF_ACCOUNT_ID']})
+          PYEOF
+          echo "✅ Discovery complete!"
