@@ -30,7 +30,7 @@ pluto = [
     {"id": "pluto-music", "name": "Pluto TV Music", "category": "Music", "url": "https://pluto-live.plutotv.net/pluto-09/pluto09/master.m3u8"},
     {"id": "pluto-anime", "name": "Pluto TV Anime", "category": "Animation;Anime", "url": "https://pluto-live.plutotv.net/pluto-12/pluto12/master.m3u8"},
     {"id": "pluto-nature", "name": "Pluto TV Nature", "category": "Documentary", "url": "https://pluto-live.plutotv.net/pluto-13/pluto13/master.m3u8"},
-    {"id": "pluto-sci-fi", "name": "Pluto TV Sci-Fi", "category": "Science Fiction", "url": "https://pluto-live.plutotv.net/pluto-14/pluto14/master.m3u8"},
+    {"id": "pluto-sci-fi", "name": "Pluto TV Sci-Fi", "category": "Sci-Fi", "url": "https://pluto-live.plutotv.net/pluto-14/pluto14/master.m3u8"},
     {"id": "pluto-food", "name": "Pluto TV Food", "category": "Entertainment;Cooking", "url": "https://pluto-live.plutotv.net/pluto-17/pluto17/master.m3u8"},
     {"id": "pluto-crime", "name": "Pluto TV Crime", "category": "Entertainment;Crime", "url": "https://pluto-live.plutotv.net/pluto-19/pluto19/master.m3u8"},
 ]
