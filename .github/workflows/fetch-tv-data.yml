@@ -125,16 +125,19 @@ jobs:
           # ─── 5. GOLIVEAFRICA (Kenyan channels) ───
           print("=== Adding GoLiveAfrica ===")
           golive_channels = [
-              {"id": "golive-capuchin", "name": "Capuchin TV", "category": "Religious", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/64227f58b8413/index.m3u8"},
-              {"id": "golive-meru", "name": "Meru TV", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/628e5c1991061/index.m3u8"},
-              {"id": "golive-mof", "name": "MOF TV", "category": "Religious", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/6425a6efa15c8/index.m3u8"},
-              {"id": "golive-younib", "name": "Younib Media TV", "category": "Entertainment", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/6257fbe7383d6/index.m3u8"},
-              {"id": "golive-ebn", "name": "EBN TV", "category": "Religious", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/65d8475d1e6cb/index.m3u8"},
-              {"id": "golive-kass", "name": "Kass TV", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/62f643cdca8cf/index.m3u8"},
-              {"id": "golive-sayare", "name": "Sayare TV", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/636dedfa327d7/index.m3u8"},
-              {"id": "golive-elevate", "name": "Elevate TV", "category": "Religious", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/64a98a7eac12a/index.m3u8"},
-              {"id": "golive-raia", "name": "Raia TV", "category": "News", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/64873b6222c93/index.m3u8"},
-              {"id": "golive-pillar", "name": "Pillar TV", "category": "Religious", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/627e198474bd1/index.m3u8"},
+              {"id": "golive-capuchin", "name": "Capuchin TV", "category": "Religious", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/64227f58b8413/index.m3u8", "verified": True},
+              {"id": "golive-meru", "name": "Meru TV", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/628e5c1991061/index.m3u8", "verified": True},
+              {"id": "golive-mof", "name": "MOF TV", "category": "Religious", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/6425a6efa15c8/index.m3u8", "verified": True},
+              {"id": "golive-younib", "name": "Younib Media TV", "category": "Entertainment", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/6257fbe7383d6/index.m3u8", "verified": True},
+              {"id": "golive-69df619", "name": "GoLive Africa Channel 1", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/69df619b987c5/index.m3u8", "verified": True},
+              {"id": "golive-6a479dc", "name": "GoLive Africa Channel 2", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/6a479dc9e258a/index.m3u8", "verified": True},
+              {"id": "golive-6267c81", "name": "GoLive Africa Channel 3", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/6267c81719fd2/index.m3u8", "verified": True},
+              {"id": "golive-6258185", "name": "GoLive Africa Channel 4", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/6258185b02c25/index.m3u8", "verified": True},
+              {"id": "golive-6a296d7", "name": "GoLive Africa Channel 5", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/6a296d78b155e/index.m3u8", "verified": True},
+              {"id": "golive-6981b15", "name": "GoLive Africa Channel 6", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/6981b1521f91d/index.m3u8", "verified": True},
+              {"id": "golive-698c4c1", "name": "GoLive Africa Channel 7", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/698c4c1c4eff9/index.m3u8", "verified": True},
+              {"id": "golive-6259650", "name": "GoLive Africa Channel 8", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/625965017ed69/index.m3u8", "verified": True},
+              {"id": "golive-6283883", "name": "GoLive Africa Channel 9", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/628388326bca3/index.m3u8", "verified": True},
           ]
           for c in golive_channels:
               c["source"] = "goliveafrica"
