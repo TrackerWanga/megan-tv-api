@@ -122,6 +122,25 @@ jobs:
               c["source"] = "tubi"
               channels.append(c)
           print(f"Tubi: {len(tubi_channels)} channels")
+          # ─── 5. GOLIVEAFRICA (Kenyan channels) ───
+          print("=== Adding GoLiveAfrica ===")
+          golive_channels = [
+              {"id": "golive-capuchin", "name": "Capuchin TV", "category": "Religious", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/64227f58b8413/index.m3u8"},
+              {"id": "golive-meru", "name": "Meru TV", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/628e5c1991061/index.m3u8"},
+              {"id": "golive-mof", "name": "MOF TV", "category": "Religious", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/6425a6efa15c8/index.m3u8"},
+              {"id": "golive-younib", "name": "Younib Media TV", "category": "Entertainment", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/6257fbe7383d6/index.m3u8"},
+              {"id": "golive-ebn", "name": "EBN TV", "category": "Religious", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/65d8475d1e6cb/index.m3u8"},
+              {"id": "golive-kass", "name": "Kass TV", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/62f643cdca8cf/index.m3u8"},
+              {"id": "golive-sayare", "name": "Sayare TV", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/636dedfa327d7/index.m3u8"},
+              {"id": "golive-elevate", "name": "Elevate TV", "category": "Religious", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/64a98a7eac12a/index.m3u8"},
+              {"id": "golive-raia", "name": "Raia TV", "category": "News", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/64873b6222c93/index.m3u8"},
+              {"id": "golive-pillar", "name": "Pillar TV", "category": "Religious", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/627e198474bd1/index.m3u8"},
+          ]
+          for c in golive_channels:
+              c["source"] = "goliveafrica"
+              channels.append(c)
+          print(f"GoLiveAfrica: {len(golive_channels)} channels")
+
 
           # ─── SAVE ───
           os.makedirs('data/index', exist_ok=True)
