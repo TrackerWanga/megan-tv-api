@@ -1,4 +1,4 @@
-name: Fetch TV Stream Data
+name: Fetch All TV & Cartoon Data
 on:
   schedule:
     - cron: '0 */6 * * *'
@@ -10,234 +10,295 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Fetch and Parse All TV Data
-        run: |
-          mkdir -p data/index data/countries data/categories
-          
-          # ─── 1. IPTV-ORG (13K+ channels) ───
-          echo "=== Fetching IPTV-org ==="
-          curl -sL "https://iptv-org.github.io/iptv/index.m3u" -o data/iptv-org.m3u
-          echo "Downloaded $(wc -c < data/iptv-org.m3u) bytes"
-          
-          python3 << 'PYEOF'
-          import json, re, os
-          
-          channels = []
-          
-          # Parse IPTV-org
-          with open('data/iptv-org.m3u', 'r', encoding='utf-8') as f:
-              content = f.read()
-          
-          pattern = r'#EXTINF:-1 tvg-id="([^"]+)" tvg-logo="([^"]*)" group-title="([^"]*)",(.*?)\n(https?://[^\n]+)'
-          for m in re.finditer(pattern, content):
-              tvg_id = m.group(1)
-              # Extract clean country code from tvg-id (format: Name.COUNTRY@HD)
-              parts = tvg_id.split('.')
-              if len(parts) > 1:
-                  country_part = parts[1]
-                  # Remove @HD, @SD, @Plus1, @India etc
-                  country = re.sub(r'@.*', '', country_part).upper()[:3]
-              else:
-                  country = tvg_id[:2].upper()
-              
-              # Skip empty country codes
-              if not country or len(country) < 2:
-                  continue
-              
-              channels.append({
-                  "id": tvg_id,
-                  "name": m.group(4).strip(),
-                  "logo": m.group(2),
-                  "category": m.group(3),
-                  "url": m.group(5).strip(),
-                  "country": country,
-                  "source": "iptv-org"
-              })
-          
-          print(f"IPTV-org: {len(channels)} channels")
-          
-          # ─── 2. PLUTO TV (200+ free channels) ───
-          print("=== Adding Pluto TV ===")
-          pluto_channels = [
-              {"id": "pluto-movies", "name": "Pluto TV Movies", "category": "Movies", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-movies/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-01/pluto01/master.m3u8"},
-              {"id": "pluto-action", "name": "Pluto TV Action", "category": "Movies;Action", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-action/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-02/pluto02/master.m3u8"},
-              {"id": "pluto-comedy", "name": "Pluto TV Comedy", "category": "Comedy", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-comedy/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-03/pluto03/master.m3u8"},
-              {"id": "pluto-drama", "name": "Pluto TV Drama", "category": "Entertainment;Drama", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-drama/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-04/pluto04/master.m3u8"},
-              {"id": "pluto-horror", "name": "Pluto TV Horror", "category": "Movies;Horror", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-horror/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-05/pluto05/master.m3u8"},
-              {"id": "pluto-kids", "name": "Pluto TV Kids", "category": "Kids", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-kids/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-06/pluto06/master.m3u8"},
-              {"id": "pluto-sports", "name": "Pluto TV Sports", "category": "Sports", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-sports/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-07/pluto07/master.m3u8"},
-              {"id": "pluto-news", "name": "Pluto TV News", "category": "News", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-news/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-08/pluto08/master.m3u8"},
-              {"id": "pluto-music", "name": "Pluto TV Music", "category": "Music", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-music/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-09/pluto09/master.m3u8"},
-              {"id": "pluto-reality", "name": "Pluto TV Reality", "category": "Entertainment", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-reality/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-10/pluto10/master.m3u8"},
-              {"id": "pluto-classic-tv", "name": "Pluto TV Classic TV", "category": "Entertainment;Classic", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-classic-tv/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-11/pluto11/master.m3u8"},
-              {"id": "pluto-anime", "name": "Pluto TV Anime", "category": "Animation;Anime", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-anime/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-12/pluto12/master.m3u8"},
-              {"id": "pluto-nature", "name": "Pluto TV Nature", "category": "Documentary", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-nature/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-13/pluto13/master.m3u8"},
-              {"id": "pluto-sci-fi", "name": "Pluto TV Sci-Fi", "category": "Movies;Sci-Fi", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-sci-fi/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-14/pluto14/master.m3u8"},
-              {"id": "pluto-travel", "name": "Pluto TV Travel", "category": "Travel", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-travel/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-15/pluto15/master.m3u8"},
-              {"id": "pluto-cars", "name": "Pluto TV Cars", "category": "Entertainment;Automotive", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-cars/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-16/pluto16/master.m3u8"},
-              {"id": "pluto-food", "name": "Pluto TV Food", "category": "Entertainment;Cooking", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-food/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-17/pluto17/master.m3u8"},
-              {"id": "pluto-game-shows", "name": "Pluto TV Game Shows", "category": "Entertainment;Game-Show", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-game-shows/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-18/pluto18/master.m3u8"},
-              {"id": "pluto-crime", "name": "Pluto TV Crime", "category": "Entertainment;Crime", "country": "US", "logo": "https://images.pluto.tv/channels/pluto-crime/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/pluto-19/pluto19/master.m3u8"},
-              {"id": "pluto-vevo-pop", "name": "Vevo Pop", "category": "Music", "country": "US", "logo": "https://images.pluto.tv/channels/vevo-pop/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/vevo/vevo-pop/master.m3u8"},
-              {"id": "pluto-vevo-country", "name": "Vevo Country", "category": "Music", "country": "US", "logo": "https://images.pluto.tv/channels/vevo-country/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/vevo/vevo-country/master.m3u8"},
-              {"id": "pluto-vevo-hiphop", "name": "Vevo Hip-Hop", "category": "Music", "country": "US", "logo": "https://images.pluto.tv/channels/vevo-hiphop/colorLogoPNG.png", "url": "https://pluto-live.plutotv.net/vevo/vevo-hiphop/master.m3u8"},
-          ]
-          for c in pluto_channels:
-              c["source"] = "pluto"
-              channels.append(c)
-          print(f"Pluto TV: {len(pluto_channels)} channels")
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
 
-          # ─── 3. SAMSUNG TV PLUS ───
-          print("=== Adding Samsung TV Plus ===")
-          samsung_channels = [
-              {"id": "samsung-news", "name": "Samsung TV Plus - News", "category": "News", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/news.m3u8"},
-              {"id": "samsung-movies", "name": "Samsung TV Plus - Movies", "category": "Movies", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/movies.m3u8"},
-              {"id": "samsung-entertainment", "name": "Samsung TV Plus - Entertainment", "category": "Entertainment", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/entertainment.m3u8"},
-              {"id": "samsung-kids", "name": "Samsung TV Plus - Kids", "category": "Kids", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/kids.m3u8"},
-              {"id": "samsung-sports", "name": "Samsung TV Plus - Sports", "category": "Sports", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/sports.m3u8"},
-              {"id": "samsung-music", "name": "Samsung TV Plus - Music", "category": "Music", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/music.m3u8"},
-              {"id": "samsung-lifestyle", "name": "Samsung TV Plus - Lifestyle", "category": "Entertainment", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/lifestyle.m3u8"},
-              {"id": "samsung-sci-fi", "name": "Samsung TV Plus - Sci-Fi", "category": "Movies;Sci-Fi", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/scifi.m3u8"},
-              {"id": "samsung-comedy", "name": "Samsung TV Plus - Comedy", "category": "Comedy", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/comedy.m3u8"},
-              {"id": "samsung-crime", "name": "Samsung TV Plus - Crime", "category": "Entertainment;Crime", "country": "US", "logo": "", "url": "https://samsung-us.tizen.tv/live/usa/crime.m3u8"},
-          ]
-          for c in samsung_channels:
-              c["source"] = "samsung"
-              channels.append(c)
-          print(f"Samsung TV Plus: {len(samsung_channels)} channels")
+      - name: Scrape All Sources
+        run: python3 << 'PYEOF'
+import json, re, os, subprocess, urllib.request
+from datetime import datetime
+from bs4 import BeautifulSoup
 
-          # ─── 4. TUBI ───
-          print("=== Adding Tubi ===")
-          tubi_channels = [
-              {"id": "tubi-movies", "name": "Tubi Movies", "category": "Movies", "country": "US", "logo": "", "url": "https://tubitv.com/live"},
-              {"id": "tubi-action", "name": "Tubi Action", "category": "Movies;Action", "country": "US", "logo": "", "url": "https://tubitv.com/live/action"},
-              {"id": "tubi-comedy", "name": "Tubi Comedy", "category": "Comedy", "country": "US", "logo": "", "url": "https://tubitv.com/live/comedy"},
-              {"id": "tubi-horror", "name": "Tubi Horror", "category": "Movies;Horror", "country": "US", "logo": "", "url": "https://tubitv.com/live/horror"},
-              {"id": "tubi-kids", "name": "Tubi Kids", "category": "Kids", "country": "US", "logo": "", "url": "https://tubitv.com/live/kids"},
-              {"id": "tubi-sci-fi", "name": "Tubi Sci-Fi", "category": "Movies;Sci-Fi", "country": "US", "logo": "", "url": "https://tubitv.com/live/sci-fi"},
-              {"id": "tubi-entertainment", "name": "Tubi Entertainment", "category": "Entertainment", "country": "US", "logo": "", "url": "https://tubitv.com/live/entertainment"},
-              {"id": "tubi-documentary", "name": "Tubi Documentaries", "category": "Documentary", "country": "US", "logo": "", "url": "https://tubitv.com/live/documentary"},
-          ]
-          for c in tubi_channels:
-              c["source"] = "tubi"
-              channels.append(c)
-          print(f"Tubi: {len(tubi_channels)} channels")
-          # ─── 5. GOLIVEAFRICA (Kenyan channels) ───
-          print("=== Adding GoLiveAfrica ===")
-          golive_channels = [
-              {"id": "golive-capuchin", "name": "Capuchin TV", "category": "Religious", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/64227f58b8413/index.m3u8", "verified": True},
-              {"id": "golive-meru", "name": "Meru TV", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/628e5c1991061/index.m3u8", "verified": True},
-              {"id": "golive-mof", "name": "MOF TV", "category": "Religious", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/6425a6efa15c8/index.m3u8", "verified": True},
-              {"id": "golive-younib", "name": "Younib Media TV", "category": "Entertainment", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/6257fbe7383d6/index.m3u8", "verified": True},
-              {"id": "golive-69df619", "name": "GoLive Africa Channel 1", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/69df619b987c5/index.m3u8", "verified": True},
-              {"id": "golive-6a479dc", "name": "GoLive Africa Channel 2", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/6a479dc9e258a/index.m3u8", "verified": True},
-              {"id": "golive-6267c81", "name": "GoLive Africa Channel 3", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/6267c81719fd2/index.m3u8", "verified": True},
-              {"id": "golive-6258185", "name": "GoLive Africa Channel 4", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/6258185b02c25/index.m3u8", "verified": True},
-              {"id": "golive-6a296d7", "name": "GoLive Africa Channel 5", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/6a296d78b155e/index.m3u8", "verified": True},
-              {"id": "golive-6981b15", "name": "GoLive Africa Channel 6", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/6981b1521f91d/index.m3u8", "verified": True},
-              {"id": "golive-698c4c1", "name": "GoLive Africa Channel 7", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/698c4c1c4eff9/index.m3u8", "verified": True},
-              {"id": "golive-6259650", "name": "GoLive Africa Channel 8", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/625965017ed69/index.m3u8", "verified": True},
-              {"id": "golive-6283883", "name": "GoLive Africa Channel 9", "category": "General", "country": "KE", "logo": "", "url": "https://goliveafrica.media:9998/live/628388326bca3/index.m3u8", "verified": True},
-          ]
-          for c in golive_channels:
-              c["source"] = "goliveafrica"
-              channels.append(c)
-          print(f"GoLiveAfrica: {len(golive_channels)} channels")
+UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+os.makedirs('data', exist_ok=True)
 
+def test_stream(url, retries=3):
+    """Test if a stream URL is online with retries"""
+    for i in range(retries):
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': UA})
+            resp = urllib.request.urlopen(req, timeout=8)
+            if resp.status == 200:
+                content = resp.read().decode()
+                # Check for actual video content
+                if '.ts' in content or '.m3u8' in content or len(content) > 500:
+                    return True
+        except:
+            if i < retries - 1:
+                continue
+    return False
 
-          # ─── SAVE ───
-          os.makedirs('data/index', exist_ok=True)
-          with open('data/index/all.json', 'w') as f:
-              json.dump({"channels": channels, "total": len(channels)}, f)
-          
-          countries = {}
-          for c in channels:
-              cc = c['country']
-              if cc not in countries: countries[cc] = []
-              countries[cc].append(c)
-          os.makedirs('data/countries', exist_ok=True)
-          for cc, chs in countries.items():
-              with open(f'data/countries/{cc}.json', 'w') as f:
-                  json.dump({"country": cc, "channels": chs, "count": len(chs)}, f)
-          
-          categories = {}
-          for c in channels:
-              for cat in c['category'].split(';'):
-                  cat = cat.strip().lower()
-                  if cat not in categories: categories[cat] = []
-                  categories[cat].append(c)
-          os.makedirs('data/categories', exist_ok=True)
-          for cat, chs in categories.items():
-              with open(f'data/categories/{cat}.json', 'w') as f:
-                  json.dump({"category": cat, "channels": chs, "count": len(chs)}, f)
-          
-          with open('data/index/countries.json', 'w') as f:
-              json.dump([{"code": cc, "count": len(chs)} for cc, chs in sorted(countries.items())], f)
-          with open('data/index/categories.json', 'w') as f:
-              json.dump([{"name": cat, "count": len(chs)} for cat, chs in sorted(categories.items())], f)
-          
-          from datetime import datetime
-          with open('data/stats.json', 'w') as f:
-              json.dump({"totalChannels": len(channels), "totalCountries": len(countries), "lastUpdated": datetime.utcnow().isoformat()}, f)
-          
-          print(f"\n✅ TOTAL: {len(channels)} channels, {len(countries)} countries, {len(categories)} categories")
-          PYEOF
-      
+# ═══════════════════════════════════════════
+# 1. IPTV-ORG
+# ═══════════════════════════════════════════
+print("1. Fetching IPTV-org...")
+subprocess.run(['curl', '-sL', 'https://iptv-org.github.io/iptv/index.m3u', '-o', 'data/iptv.m3u'], timeout=120)
+with open('data/iptv.m3u', 'r') as f:
+    content = f.read()
+
+channels = []
+pattern = r'#EXTINF:-1 tvg-id="([^"]+)" tvg-logo="([^"]*)" group-title="([^"]*)",(.*?)\n(https?://[^\n]+)'
+for m in re.finditer(pattern, content):
+    tvg_id = m.group(1)
+    parts = tvg_id.split('.')
+    country = parts[1] if len(parts) > 1 else tvg_id[:2].upper()
+    country = re.sub(r'@.*', '', country)[:3].upper()
+    if len(country) < 2: continue
+    channels.append({
+        "id": tvg_id, "name": m.group(4).strip(), "logo": m.group(2),
+        "category": m.group(3), "url": m.group(5).strip(),
+        "country": country, "source": "iptv-org"
+    })
+print(f"   IPTV-org: {len(channels)} channels")
+
+# ═══════════════════════════════════════════
+# 2. GoLiveAfrica
+# ═══════════════════════════════════════════
+print("\n2. Scraping GoLiveAfrica...")
+try:
+    resp = urllib.request.urlopen(urllib.request.Request(
+        'https://goliveafrica.media/cat/live-tv-channels', headers={'User-Agent': UA}
+    ), timeout=15)
+    html = resp.read().decode()
+    live_ids = list(set(re.findall(r'live_([a-f0-9]{13,})', html)))
+    print(f"   Found {len(live_ids)} IDs, testing...")
+    
+    for lid in live_ids:
+        url = f"https://goliveafrica.media:9998/live/{lid}/index.m3u8"
+        if test_stream(url):
+            channels.append({
+                "id": f"golive-{lid[:8]}", "name": f"GoLive Africa - {lid[:8]}",
+                "category": "General", "url": url, "country": "KE",
+                "source": "goliveafrica", "online": True
+            })
+            print(f"     LIVE: {lid[:8]}")
+except Exception as e:
+    print(f"   Error: {e}")
+
+# ═══════════════════════════════════════════
+# 3. Pluto TV
+# ═══════════════════════════════════════════
+print("\n3. Adding Pluto TV...")
+pluto = [
+    {"id": "pluto-movies", "name": "Pluto TV Movies", "category": "Movies", "url": "https://pluto-live.plutotv.net/pluto-01/pluto01/master.m3u8"},
+    {"id": "pluto-action", "name": "Pluto TV Action", "category": "Action", "url": "https://pluto-live.plutotv.net/pluto-02/pluto02/master.m3u8"},
+    {"id": "pluto-comedy", "name": "Pluto TV Comedy", "category": "Comedy", "url": "https://pluto-live.plutotv.net/pluto-03/pluto03/master.m3u8"},
+    {"id": "pluto-kids", "name": "Pluto TV Kids", "category": "Kids", "url": "https://pluto-live.plutotv.net/pluto-06/pluto06/master.m3u8"},
+    {"id": "pluto-sports", "name": "Pluto TV Sports", "category": "Sports", "url": "https://pluto-live.plutotv.net/pluto-07/pluto07/master.m3u8"},
+    {"id": "pluto-news", "name": "Pluto TV News", "category": "News", "url": "https://pluto-live.plutotv.net/pluto-08/pluto08/master.m3u8"},
+    {"id": "pluto-music", "name": "Pluto TV Music", "category": "Music", "url": "https://pluto-live.plutotv.net/pluto-09/pluto09/master.m3u8"},
+    {"id": "pluto-anime", "name": "Pluto TV Anime", "category": "Animation;Anime", "url": "https://pluto-live.plutotv.net/pluto-12/pluto12/master.m3u8"},
+    {"id": "pluto-nature", "name": "Pluto TV Nature", "category": "Documentary", "url": "https://pluto-live.plutotv.net/pluto-13/pluto13/master.m3u8"},
+    {"id": "pluto-sci-fi", "name": "Pluto TV Sci-Fi", "category": "Science Fiction", "url": "https://pluto-live.plutotv.net/pluto-14/pluto14/master.m3u8"},
+    {"id": "pluto-food", "name": "Pluto TV Food", "category": "Entertainment;Cooking", "url": "https://pluto-live.plutotv.net/pluto-17/pluto17/master.m3u8"},
+    {"id": "pluto-crime", "name": "Pluto TV Crime", "category": "Entertainment;Crime", "url": "https://pluto-live.plutotv.net/pluto-19/pluto19/master.m3u8"},
+]
+for p in pluto:
+    p["source"] = "pluto"
+    p["country"] = "US"
+    print(f"   Testing {p['name']}...")
+    p["online"] = test_stream(p["url"])
+    channels.append(p)
+print(f"   Pluto: {len(pluto)} channels added")
+
+# ═══════════════════════════════════════════
+# 4. Samsung TV Plus
+# ═══════════════════════════════════════════
+print("\n4. Adding Samsung TV Plus...")
+samsung = [
+    {"id": "samsung-news", "name": "Samsung TV Plus - News", "category": "News", "url": "https://samsung-us.tizen.tv/live/usa/news.m3u8"},
+    {"id": "samsung-movies", "name": "Samsung TV Plus - Movies", "category": "Movies", "url": "https://samsung-us.tizen.tv/live/usa/movies.m3u8"},
+    {"id": "samsung-entertainment", "name": "Samsung TV Plus - Entertainment", "category": "Entertainment", "url": "https://samsung-us.tizen.tv/live/usa/entertainment.m3u8"},
+    {"id": "samsung-kids", "name": "Samsung TV Plus - Kids", "category": "Kids", "url": "https://samsung-us.tizen.tv/live/usa/kids.m3u8"},
+    {"id": "samsung-sports", "name": "Samsung TV Plus - Sports", "category": "Sports", "url": "https://samsung-us.tizen.tv/live/usa/sports.m3u8"},
+]
+for s in samsung:
+    s["source"] = "samsung"
+    s["country"] = "US"
+    print(f"   Testing {s['name']}...")
+    s["online"] = test_stream(s["url"])
+    channels.append(s)
+print(f"   Samsung: {len(samsung)} channels added")
+
+# ═══════════════════════════════════════════
+# 5. PBS KIDS
+# ═══════════════════════════════════════════
+print("\n5. Scraping PBS Kids...")
+pbs_shows = []
+try:
+    resp = urllib.request.urlopen(urllib.request.Request(
+        'https://pbskids.org/videos', headers={'User-Agent': UA}
+    ), timeout=15)
+    html = resp.read().decode()
+    soup = BeautifulSoup(html, 'html.parser')
+    
+    # Find all show data from Next.js JSON
+    script_tag = soup.find('script', id='__NEXT_DATA__')
+    if script_tag:
+        data = json.loads(script_tag.text)
+        page_data = data.get('props',{}).get('pageProps',{}).get('pageData',{})
+        # Navigate to find shows
+        if 'mastheadContent' in page_data:
+            for module in page_data.get('mastheadContent',[]):
+                if module.get('__typename') == 'MastheadContentModulesShows':
+                    for show in module.get('shows',[]):
+                        pbs_shows.append({
+                            "id": f"pbs-{show.get('id','')}",
+                            "title": show.get('title',''),
+                            "slug": show.get('slug',''),
+                            "description": show.get('description','')[:200],
+                            "poster": show.get('image',''),
+                            "source": "pbskids",
+                        })
+    
+    print(f"   PBS Kids: {len(pbs_shows)} shows found")
+except Exception as e:
+    print(f"   PBS Kids error: {e}")
+
+# ═══════════════════════════════════════════
+# 6. SUPER CARTOONS
+# ═══════════════════════════════════════════
+print("\n6. Scraping SuperCartoons...")
+cartoons = []
+try:
+    resp = urllib.request.urlopen(urllib.request.Request(
+        'https://www.supercartoons.net', headers={'User-Agent': UA}
+    ), timeout=15)
+    html = resp.read().decode()
+    soup = BeautifulSoup(html, 'html.parser')
+    
+    for link in soup.find_all('a', href=True):
+        href = link.get('href','')
+        text = link.get_text(strip=True)
+        if '/cartoon/' in href and len(text) > 3:
+            cartoons.append({
+                "id": f"sc-{href.split('/')[-1]}",
+                "name": text,
+                "url": f"https://www.supercartoons.net{href}" if href.startswith('/') else href,
+                "category": "Cartoons",
+                "source": "supercartoons",
+                "country": "US",
+            })
+    
+    # Deduplicate
+    seen = set()
+    unique_cartoons = []
+    for c in cartoons:
+        if c['name'] not in seen:
+            seen.add(c['name'])
+            unique_cartoons.append(c)
+    
+    print(f"   SuperCartoons: {len(unique_cartoons)} cartoons")
+except Exception as e:
+    print(f"   SuperCartoons error: {e}")
+    unique_cartoons = []
+
+# ═══════════════════════════════════════════
+# SAVE ALL DATA
+# ═══════════════════════════════════════════
+print("\n7. Saving data...")
+os.makedirs('data/index', exist_ok=True)
+os.makedirs('data/countries', exist_ok=True)
+os.makedirs('data/categories', exist_ok=True)
+os.makedirs('data/platforms', exist_ok=True)
+os.makedirs('data/cartoons', exist_ok=True)
+os.makedirs('data/pbskids', exist_ok=True)
+
+# All channels
+with open('data/index/all.json', 'w') as f:
+    json.dump({"channels": channels, "total": len(channels)}, f)
+
+# By country
+countries = {}
+for c in channels:
+    cc = c['country']
+    if cc not in countries: countries[cc] = []
+    countries[cc].append(c)
+for cc, chs in countries.items():
+    with open(f'data/countries/{cc}.json', 'w') as f:
+        json.dump({"country": cc, "channels": chs, "count": len(chs)}, f)
+
+# By category
+categories = {}
+for c in channels:
+    for cat in c['category'].split(';'):
+        cat = cat.strip().lower()
+        if cat not in categories: categories[cat] = []
+        categories[cat].append(c)
+for cat, chs in categories.items():
+    with open(f'data/categories/{cat}.json', 'w') as f:
+        json.dump({"category": cat, "channels": chs, "count": len(chs)}, f)
+
+# Indexes
+with open('data/index/countries.json', 'w') as f:
+    json.dump([{"code": cc, "count": len(chs)} for cc, chs in sorted(countries.items())], f)
+with open('data/index/categories.json', 'w') as f:
+    json.dump([{"name": cat, "count": len(chs)} for cat, chs in sorted(categories.items())], f)
+
+# Platforms
+for src in ['pluto', 'samsung', 'goliveafrica']:
+    src_channels = [c for c in channels if c.get('source') == src]
+    with open(f'data/platforms/{src}.json', 'w') as f:
+        json.dump({"platform": src, "channels": src_channels, "count": len(src_channels)}, f)
+
+# Cartoons
+with open('data/cartoons/index.json', 'w') as f:
+    json.dump({"channels": unique_cartoons, "total": len(unique_cartoons)}, f)
+
+# PBS Kids
+with open('data/pbskids/index.json', 'w') as f:
+    json.dump({"shows": pbs_shows, "total": len(pbs_shows)}, f)
+
+# Stats
+with open('data/stats.json', 'w') as f:
+    json.dump({
+        "totalChannels": len(channels),
+        "totalCountries": len(countries),
+        "totalCartoons": len(unique_cartoons),
+        "totalPbsShows": len(pbs_shows),
+        "lastUpdated": datetime.utcnow().isoformat()
+    }, f)
+
+print(f"\n✅ TOTAL: {len(channels)} channels, {len(countries)} countries, {len(unique_cartoons)} cartoons, {len(pbs_shows)} PBS shows")
+PYEOF
+
       - name: Install Wrangler
         run: npm install -g wrangler@latest
-      
+
       - name: Upload to R2
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
-          npx wrangler r2 object put --remote megan-tv-streams/index/all.json --file=data/index/all.json
-          npx wrangler r2 object put --remote megan-tv-streams/index/countries.json --file=data/index/countries.json
-          npx wrangler r2 object put --remote megan-tv-streams/index/categories.json --file=data/index/categories.json
-          npx wrangler r2 object put --remote megan-tv-streams/stats.json --file=data/stats.json
+          for f in data/index/*.json data/stats.json; do
+            npx wrangler r2 object put megan-tv-streams/${f#data/} --file=$f
+          done
           for f in data/countries/*.json; do
-            name=$(basename $f)
-            npx wrangler r2 object put --remote megan-tv-streams/countries/$name --file=$f
+            npx wrangler r2 object put megan-tv-streams/${f#data/} --file=$f
           done
           for f in data/categories/*.json; do
-            name=$(basename $f)
-            npx wrangler r2 object put --remote megan-tv-streams/categories/$name --file=$f
+            npx wrangler r2 object put megan-tv-streams/${f#data/} --file=$f
+          done
+          for f in data/platforms/*.json; do
+            npx wrangler r2 object put megan-tv-streams/${f#data/} --file=$f
+          done
+          for f in data/cartoons/*.json; do
+            npx wrangler r2 object put megan-tv-streams/${f#data/} --file=$f
+          done
+          for f in data/pbskids/*.json; do
+            npx wrangler r2 object put megan-tv-streams/${f#data/} --file=$f
           done
           echo "✅ R2 upload complete!"
-      - name: Test Stream Health
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "Testing verified streams..."
-          python3 << 'PYEOF2'
-          import json, urllib.request, subprocess, os
-          
-          # Test GoLiveAfrica channels
-          golive_ids = [
-              "64227f58b8413", "628e5c1991061", "6425a6efa15c8", "6257fbe7383d6",
-              "69df619b987c5", "6a479dc9e258a", "6267c81719fd2", "6258185b02c25",
-              "6a296d78b155e", "6981b1521f91d", "698c4c1c4eff9", "625965017ed69", "628388326bca3"
-          ]
-          
-          results = {}
-          for lid in golive_ids:
-              url = f"https://goliveafrica.media:9998/live/{lid}/index.m3u8"
-              r = subprocess.run(['curl', '-s', '-o', '/dev/null', '-w', '%{http_code}', url,
-                                  '-H', 'User-Agent: Mozilla/5.0', '--max-time', '5'],
-                                 capture_output=True, text=True)
-              results[lid] = {"online": r.stdout.strip() == '200', "last_checked": __import__('datetime').datetime.utcnow().isoformat()}
-          
-          with open('data/stream_health.json', 'w') as f:
-              json.dump(results, f, indent=2)
-          
-          online = sum(1 for v in results.values() if v['online'])
-          print(f"Stream health: {online}/{len(golive_ids)} online")
-          PYEOF2
-          
-          npx wrangler r2 object put megan-tv-streams/stream_health.json --file=data/stream_health.json
-          echo "Health check uploaded to R2"
-
 
       - name: Update KV
         env:
@@ -246,124 +307,3 @@ jobs:
         run: |
           npx wrangler kv key put --binding TV_CACHE stats --path=data/stats.json
           echo "✅ KV updated!"
-
-      - name: Auto-Discover New Streams
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-        run: |
-          echo "=== Auto-Discovering New Streams ==="
-          python3 << 'PYEOF'
-          import json, subprocess, re, os
-          from datetime import datetime
-          
-          new_channels = []
-          
-          # ─── 1. Scrape GoLiveAfrica for new live IDs ───
-          print("1. Scraping GoLiveAfrica...")
-          try:
-              result = subprocess.run(['curl', '-s', 'https://goliveafrica.media/cat/live-tv-channels',
-                                       '-H', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'],
-                                      capture_output=True, text=True, timeout=15)
-              html = result.stdout
-              
-              # Find live stream IDs in the page
-              live_ids = list(set(re.findall(r'live_([a-f0-9]{13,})', html)))
-              print(f"  Found {len(live_ids)} potential live IDs")
-              
-              for lid in live_ids[:20]:
-                  url = f"https://goliveafrica.media:9998/live/{lid}/index.m3u8"
-                  r = subprocess.run(['curl', '-s', '-o', '/dev/null', '-w', '%{http_code}', url,
-                                      '-H', 'User-Agent: Mozilla/5.0', '--max-time', '5'],
-                                     capture_output=True, text=True)
-                  if r.stdout.strip() == '200':
-                      # Check for actual video segments
-                      r2 = subprocess.run(['curl', '-s', url, '-H', 'User-Agent: Mozilla/5.0', '--max-time', '5'],
-                                         capture_output=True, text=True)
-                      if '.ts' in r2.stdout:
-                          new_channels.append({
-                              "id": f"golive-{lid[:8]}",
-                              "name": f"GoLive Africa - {lid[:8]}",
-                              "category": "General",
-                              "country": "KE",
-                              "url": url,
-                              "source": "goliveafrica",
-                              "verified": True,
-                              "discovered": datetime.utcnow().isoformat()
-                          })
-                          print(f"    ✅ NEW LIVE: {lid[:8]}...")
-          except Exception as e:
-              print(f"  Error: {e}")
-          
-          # ─── 2. Scrape PBS Kids ───
-          print("\n2. Checking PBS Kids...")
-          try:
-              r = subprocess.run(['curl', '-s', '-o', '/dev/null', '-w', '%{http_code}',
-                                  'https://pbskids.org/videos', '--max-time', '5'],
-                                 capture_output=True, text=True)
-              if r.stdout.strip() == '200':
-                  new_channels.append({
-                      "id": "pbs-kids",
-                      "name": "PBS Kids",
-                      "category": "Kids",
-                      "country": "US",
-                      "url": "https://pbskids.org/videos",
-                      "source": "pbs",
-                      "verified": True
-                  })
-                  print("  ✅ PBS Kids accessible")
-          except: pass
-          
-          # ─── 3. Plex Live TV ───
-          print("\n3. Checking Plex...")
-          try:
-              r = subprocess.run(['curl', '-s', '-o', '/dev/null', '-w', '%{http_code}',
-                                  'https://watch.plex.tv/live-tv', '--max-time', '5'],
-                                 capture_output=True, text=True)
-              if r.stdout.strip() in ['200', '301', '302']:
-                  new_channels.append({
-                      "id": "plex-live",
-                      "name": "Plex Live TV",
-                      "category": "Entertainment",
-                      "country": "US",
-                      "url": "https://watch.plex.tv/live-tv",
-                      "source": "plex",
-                      "verified": True
-                  })
-                  print("  ✅ Plex accessible")
-          except: pass
-          
-          # ─── 4. SuperCartoons ───
-          print("\n4. Checking SuperCartoons...")
-          try:
-              r = subprocess.run(['curl', '-s', '-o', '/dev/null', '-w', '%{http_code}',
-                                  'https://www.supercartoons.net', '--max-time', '5'],
-                                 capture_output=True, text=True)
-              if r.stdout.strip() == '200':
-                  new_channels.append({
-                      "id": "supercartoons",
-                      "name": "SuperCartoons",
-                      "category": "Animation;Cartoons",
-                      "country": "US",
-                      "url": "https://www.supercartoons.net",
-                      "source": "supercartoons",
-                      "verified": True
-                  })
-                  print("  ✅ SuperCartoons accessible")
-          except: pass
-          
-          # ─── Save discovered channels ───
-          if new_channels:
-              os.makedirs('data', exist_ok=True)
-              with open('data/discovered_channels.json', 'w') as f:
-                  json.dump({"channels": new_channels, "discovered_at": datetime.utcnow().isoformat()}, f, indent=2)
-              print(f"\n✅ Discovered {len(new_channels)} new channels!")
-              
-              # Upload to R2
-              subprocess.run(['npx', 'wrangler', 'r2', 'object', 'put', 
-                             'megan-tv-streams/discovered_channels.json',
-                             '--file=data/discovered_channels.json'],
-                            env={**os.environ, 'CLOUDFLARE_API_TOKEN': os.environ['CF_API_TOKEN'],
-                                 'CLOUDFLARE_ACCOUNT_ID': os.environ['CF_ACCOUNT_ID']})
-          PYEOF
-          echo "✅ Discovery complete!"
